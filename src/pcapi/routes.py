@@ -3,7 +3,6 @@ from bottle import route, request, response, static_file, hook
 ## pcapi imports
 from pcapi import logtool
 from pcapi import config
-from pcapi import varexport
 
 from pcapi.rest import PCAPIRest
 
@@ -25,11 +24,6 @@ def capabilities():
 @route('/export/<provider>/<userid>/<path:path>', method=["GET"])
 def export(userid, provider, path="/"):
     return PCAPIRest(request,response).export(provider, userid, path)
-
-### /exportvargeoj/... ###
-@route('/exportvargeoj/<path:path>',method=["GET"])
-def exportvargeoj(path):
-    return varexport.export(path)
 
 ###  /sync/... API ###
 @route('/sync/<provider>/<userid>')
