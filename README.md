@@ -1,5 +1,11 @@
-Personal Cloud API
-==================
+Personal Cloud API (Refactored)
+===============================
+
+NOTE: This version aims at implementing the following issues:
+
+* [/fs/ refactoring](https://github.com/cobweb-eu/cobweb/issues/166)
+* [KML Refactoring](https://github.com/cobweb-eu/pcapi/issues/28)
+* [Remove media processing from PCAPI](https://github.com/cobweb-eu/pcapi/issues/20)
 
 PCAPI is a **storage middleware** that abstracts access to Cloud Storage providers in addition to its own local storage. Authentication to external providers like e.g. Dropbox is based on oAuth.
 
