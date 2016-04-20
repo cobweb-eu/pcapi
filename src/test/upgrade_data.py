@@ -21,7 +21,7 @@ sys.path.append(os.path.join(pwd, '../'))  # to find the classes to test
 
 from pcapi.server import application
 from pcapi import config
-from pcapi.utils.pcapi_upgrade import find_json, updateIdInGeojson
+from pcapi.utils.pcapi_upgrade import find_json, updateIdExtensionInGeojson, updateEditorExtension
 
 userid = "testexport@domain.co.uk"
 
@@ -40,10 +40,20 @@ class TestUpgrade(unittest.TestCase):
     """
     ########### UPLOAD RECORDS ###########
 
-    def test_updateIdInGeojson(self):
+    def test_updateIdExtensionInGeojson(self):
         """ read a geojson and check if id has been updated"""
         gen = find_json(envsys_records_dir)
         record = json.load(open(gen.next()))
-        new_record = updateIdInGeojson(record)
+        new_record = updateIdExtensionInGeojson(record)
         self.assertEquals(new_record["properties"]["fields"][0]["id"],
             record["properties"]["fields"][0]["id"].replace("fieldcontain-", ""))
+        self.assertEquals(new_record["properties"]["fields"][0]["type"],
+            record["properties"]["fields"][0]["id"].split("-")[0])
+
+    def test_updateEditorExtension(self):
+        """ read geojson and check if editor extension has changed"""
+        gen = find_json(envsys_records_dir)
+        record = json.load(open(gen.next()))
+        new_record = updateEditorExtension(record)
+        self.assertEquals(new_record["properties"]["editor"],
+            record["properties"]["editor"].replace(".edtr", ".json"))

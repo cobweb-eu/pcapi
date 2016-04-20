@@ -8,7 +8,7 @@ Algorithm:
     - else convert them and replace the old file
 """
 
-import os,json
+import os,json,re
 
 from pcapi import config, logtool
 
@@ -40,16 +40,31 @@ def rec2geojson(record):
     res["properties"] = record
     return res
 
-def updateIdInGeojson(record):
+def updateEditorExtension(record):
+    """
+    updates the editor to be from .edtr to .json
+    """
+    if record["properties"]["editor"].endswith(".edtr"):
+        record["properties"]["editor"] = record["properties"]["editor"].replace(".edtr", ".json")
+    return record
+
+def updateIdExtensionInGeojson(record):
     """
     updates id of each field of the geojson to follow the updated format
+    add a type
+    and update the extension
     """
     if not record.has_key('geometry'):
         return None
+    record = updateEditorExtension(record)
     for i in range(len(record["properties"]["fields"])):
         field = record["properties"]["fields"][i]
         if "fieldcontain-" in field["id"]:
-            record["properties"]["fields"][i]["id"] = field["id"].replace("fieldcontain-", "")
+            field["id"] = field["id"].replace("fieldcontain-", "")
+            field["type"] = field["id"].split("-")[0]
+            if field["type"] == "multiimage":
+                field["type"] = "image"
+            record["properties"]["fields"][i] = field
         else:
             return None
     return record
@@ -66,7 +81,7 @@ def upgrade_all_data():
             print "Overwriting new version of %s" % f
             with open(f,'w') as fp:
                 json.dump(gj,fp)
-        new_gj = updateIdInGeojson(j)
+        new_gj = updateIdExtensionInGeojson(j)
         if not new_gj:
             print "Ignoring %s which is already converted." % f
         else:
