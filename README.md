@@ -1,3 +1,5 @@
+**This is the `lite` branch without adhoc geoserver, geonetwork and flooding-use-case code. The portal's "who belongs where?" functionality is delegated to UMS that provides Shibb-headers**
+
 Personal Cloud API [![Build Status](https://travis-ci.org/cobweb-eu/pcapi.svg?branch=master)](https://travis-ci.org/cobweb-eu/pcapi)
 ==================
 
@@ -65,7 +67,7 @@ All files are under *~/.pcapi/* (unless overriden by +pcapi.ini+):
 	        Spatialite3 file contained sessions and geo data.
 * `data/<userid>`:
 		Directory containing chroot of user <userid>.
-* `logs/pcapi.log`: 
+* `logs/pcapi.log`:
       		All log outputs as configured in +pcapi.ini+.
 
 License

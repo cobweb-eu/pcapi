@@ -1,12 +1,9 @@
-import base64
 import json
 import os
 import re
-import sys
 import tempfile
 import uuid
 import urllib2
-import time
 import zipfile
 
 from bottle import static_file
@@ -15,18 +12,20 @@ from StringIO import StringIO
 from pcapi import ogr, fs_provider, helper, logtool
 from pcapi.exceptions import FsException
 from pcapi.provider import Records
-from pcapi.publish import postgis, geonetwork
 
 log = logtool.getLogger("PCAPIRest", "pcapi")
 
+
 class Record(object):
-    """ Class to store record bodies and metadata in memory for fast access"""
-    def __init__(self, content, metadata ):
-        self.content = content # as a parsed json (dict)
-        self.metadata = metadata # as a dbox_provider.Metadata object
+    """Class to store record bodies and metadata in memory for fast access"""
+
+    def __init__(self, content, metadata):
+        self.content = content  # as a parsed json (dict)
+        self.metadata = metadata  # as a dbox_provider.Metadata object
+
 
 class PCAPIRest(object):
-    """ REST part of the API. Return values should be direct json """
+    """REST part of the API. Return values should be direct json"""
 
     def __init__(self, request, response):
         self.request = request
@@ -92,8 +91,6 @@ class PCAPIRest(object):
                 if self.request.method == "PUT":
                     ## NOTE: Put is *not* currently used by FTOPEN
                     res = self.fs(provider, userid, path)
-                    if res['error'] == 0 and ogc_sync:
-                        return { "error":1, "msg":"ogc_sync is not supported for PUT. Use GET after uploading the record/assets the normal way"}
                     return res
                 if self.request.method == "POST":
                     ## We are in depth 1. Create directory (or rename directory) and then upload record.json
@@ -112,19 +109,10 @@ class PCAPIRest(object):
                         cb = None
                     path = md.path() + "/record.json"
                     res = self.fs(provider, userid, path, cb)
-
-                    # Sync to PostGIS database after processing with self.fs()
-                    # (Path resolution already done for us so we can just put/overwrite the file)
-                    # --- disabled as we assuming ftOpen issues GET request with ?ogc_sync=true *after* uploading the record
-                    if res['error'] == 0 and ogc_sync:
-                        return { "error":1, "msg":res['msg'] + " -- NOTE: ogc_sync is not supported for POST. Use GET after uploading the record/assets the normal way"}
                     return res
                 if self.request.method == "DELETE":
                     ### DELETE refers to /fs/ directories
-                    res =  self.fs(provider,userid,path)
-                    # Sync to PostGIS database if required
-                    if res['error'] == 0 and ogc_sync:
-                        postgis.delete_record(provider, userid, path)
+                    res = self.fs(provider,userid,path)
                     return res
                 if self.request.method == "GET":
                     # Check if empty path
@@ -133,10 +121,9 @@ class PCAPIRest(object):
                         self.provider.mkdir("/records")
                     ### GET /recordname returns /recordname/record.json
                     if recordname_lst[0] != "":
-                        ### !!! ogc_sync publishes records to database and returns status
+                        ### OBSOLETE LEFT FOR COMPATIBILITY with FTOpen
                         if ogc_sync:
-                            res = postgis.put_record(provider, userid, path)
-                            return res
+                            res = { "error":0, "message": "ogc_sync is obsolete and does nothing"}
                         ###
                         return self.fs(provider,userid,path + "/record.json")
 
@@ -165,11 +152,11 @@ class PCAPIRest(object):
                 return {"error":1 , "msg": str(e)}
 
     def surveys(self, provider, userid, sid):
-        """ This is the new version of editors API for COBWEB which will eventually
+        """This is the new version of editors API for COBWEB which will eventually
         replace /editors/.
 
         GET /surveys/local/UUID
-        A GET request for all editors (path=/) will query geonetwork and return
+        A GET request for all editors (path=/) will query <PORTAL> and return
         all surveys with their names eg.
         {
             "metadata": [ "b29c63ae-adc6-4732", "c8942133-22ce-4f93" ],
@@ -177,29 +164,13 @@ class PCAPIRest(object):
         }
 
         GET /surveys/local/UUID/SURVEYID
-        Will return the survey (editor) file contents after querying geonetwork for it
+        Will return the survey (editor) file contents after querying <PORTAL> for it
         """
         log.debug('survey({0}, {1}, {2})'.format(provider, userid, sid))
-
-        surveys = geonetwork.get_surveys(userid)
-
-        if not sid:
-            # Return all registered surveys
-            return surveys.get_summary_ftopen()
-        else:
-            # Return contents of file
-            s = surveys.get_survey(sid)
-            if not s: # no survey found
-                return { "error": 1 , "msg": "User is not registered for syrvey %s" % sid}
-            res = self.fs(provider,s["coordinator"],"/editors/%s.edtr" % sid)
-            # special case -- portal has survey but coordinator has not created it using Authoring Tool
-            #if isinstance(res,dict) and res["msg"].startswith("[Errno 2] No such file or"):
-            #    abort(404, "No survey found. Did you create a survey using the Authoring Tool?")
-            return res
-        return {"error":1, "msg":"Unexpected error" }
+        return {"error":1, "msg":"Not implemented"}
 
     def editors(self, provider, userid, path, flt):
-        """ Normally this is just a shortcut for /fs/ calls to the /editors directory.
+        """Normally this is just a shortcut for /fs/ calls to the /editors directory.
 
         A GET request for all editors (path=/) should parse each editor and
         return their names (s.a. documentation).
