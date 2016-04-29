@@ -167,7 +167,23 @@ class PCAPIRest(object):
         Will return the survey (editor) file contents after querying <PORTAL> for it
         """
         log.debug('survey({0}, {1}, {2})'.format(provider, userid, sid))
-        return {"error":1, "msg":"Not implemented"}
+
+        surveys = geonetwork.get_surveys(userid)
+
+        if not sid:
+            # Return all registered surveys
+            return surveys.get_summary_ftopen()
+        else:
+            # Return contents of file
+            s = surveys.get_survey(sid)
+            if not s: # no survey found
+                return { "error": 1 , "msg": "User is not registered for syrvey %s" % sid}
+            res = self.fs(provider,s["coordinator"],"/editors/%s.json" % sid)
+            # special case -- portal has survey but coordinator has not created it using Authoring Tool
+            #if isinstance(res,dict) and res["msg"].startswith("[Errno 2] No such file or"):
+            #    abort(404, "No survey found. Did you create a survey using the Authoring Tool?")
+            return res
+        return {"error":1, "msg":"Unexpected error" }
 
     def editors(self, provider, userid, path, flt):
         """Normally this is just a shortcut for /fs/ calls to the /editors directory.
