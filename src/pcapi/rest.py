@@ -440,39 +440,6 @@ class PCAPIRest(object):
 
         return self.provider.copy(folder, new_folder)
 
-    def convertToGeoJSON(self, records, userid):
-        """
-        Export all records to geojson and return result.
-        """
-        self.response.headers['Content-Type'] = 'application/json'
-        features = []
-        for r in records:
-            # log.debug(r.content)
-            # get first -and only- value of dictionary because records are an array of
-            # [ { <name> : <geojson feature> } ....]
-            f = r.content.values()[0]
-            features.append(f)
-
-        geojson_str = {"type": "FeatureCollection", "features": features}
-        log.debug(geojson_str)
-        return json.dumps(geojson_str)
-
-    def convertToDatabase(self, records, userid):
-        """
-        function for converting from json to a PostGIS database
-
-        Also converts all records to "/data.json" for further processing.
-        In the future "/data.json" can be incrementally for speed.
-        """
-        data = self.provider.realpath('/data.geojson')
-        log.debug('EXPORTING to ' + data)
-        geojson = self.convertToGeoJSON(records,userid)
-        with open(data, "w") as fp:
-            fp.write(geojson)
-
-        # We can now convert to whatever OGR supports
-        return ogr.toPostGIS(data, userid)
-
     def get_media(self, records_cache, exts, frmt):
         """
         function for returning back the paths of the assets
