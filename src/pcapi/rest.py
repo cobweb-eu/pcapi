@@ -122,7 +122,7 @@ class PCAPIRest(object):
                         self.provider.mkdir("/records")
                     ### GET /recordname returns /recordname/record.json
                     if recordname_lst[0] != "":
-                        ### OBSOLETE LEFT FOR COMPATIBILITY with FTOpen
+                        ### Used in German Demo for accessing all survey's private observations in one go
                         if ogc_sync:
                             try:
                                 log.debug("Mirroring command to public uid: ")
@@ -132,7 +132,13 @@ class PCAPIRest(object):
                                 dst = pubfs.realpath(path + "/record.json")
                                 src = self.provider.realpath(path + "/record.json")
                                 log.debug("Copying from {} to {}".format(src,dst))
-                                shutil.copy(src,dst)
+                                #  shutil.copy(src,dst)
+                                ## inject original UUID before copying to public
+                                with open(src,"r") as f:
+                                    with open(dst,"w") as f_dst:
+                                        jsrc = json.load(f)
+                                        jsrc["properties"]["original_uuid"] = uuid
+                                        json.dump(jsrc,f_dst)
                             except Exception as e:
                                 log.debug("Error mirroring to PUBLIC_COPY: " + e.message)
                                 log.debug("returning success to avoid confusing FTOpen")
