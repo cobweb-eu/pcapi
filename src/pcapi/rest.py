@@ -137,7 +137,7 @@ class PCAPIRest(object):
                                 with open(src,"r") as f:
                                     with open(dst,"w") as f_dst:
                                         jsrc = json.load(f)
-                                        jsrc["properties"]["original_uuid"] = uuid
+                                        jsrc["properties"]["original_uuid"] = userid
                                         json.dump(jsrc,f_dst)
                             except Exception as e:
                                 log.debug("Error mirroring to PUBLIC_COPY: " + e.message)
