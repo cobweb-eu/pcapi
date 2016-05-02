@@ -302,13 +302,14 @@ class FsProvider(object):
         return { "updated": updated, "deleted": deleted }
 
     def copy_to_public_folder(self,path):
-        """ Copies file to public folder as configued in pcapi.ini 
-        
-        returns destination path (should be the same as path)        
+        """ Copies file to public folder as configued in pcapi.ini
+
+        returns destination path (should be the same as path)
         """
         public_uid = config.get("path", "public_uid")
         pubfs = FsProvider(public_uid)
-        with open(self.realpath(path)) as fp:
+        fullpath = self.realpath(path)
+        with open(fullpath) as fp:
             return pubfs.put_file(path, fp, True)
 
     def file_delete(self,path):

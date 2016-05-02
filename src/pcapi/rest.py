@@ -1,3 +1,6 @@
+# coding=utf-8
+"""This is specific to the demo in Germany"""
+import base64
 import json
 import os
 import re
@@ -5,6 +8,7 @@ import tempfile
 import uuid
 import urllib2
 import zipfile
+import shutil
 
 from bottle import static_file
 from StringIO import StringIO
@@ -12,8 +16,10 @@ from StringIO import StringIO
 from pcapi import ogr, fs_provider, helper, logtool
 from pcapi.exceptions import FsException
 from pcapi.provider import Records
+from pcapi import config
 
 log = logtool.getLogger("PCAPIRest", "pcapi")
+public_uid = config.get("path", "public_uid")
 
 
 class Record(object):
@@ -35,9 +41,7 @@ class PCAPIRest(object):
 
     def capabilities(self):
         # TODO: configure under a providerFactory once we have >2 providers
-        return { \
-           "local" : ["search", "synchronize", "delete"] \
-        }
+        return {"local": ["search", "synchronize", "delete"]}
 
     def auth(self, provider, userid):
         """ Resume session using a *known* userid:
@@ -50,7 +54,7 @@ class PCAPIRest(object):
             Returns:
                 Error message or None if successful
         """
-        #provider is already initialised; ignore
+        # provider is already initialised; ignore
         if self.provider != None:
             return None
         log.debug("auth: resuming %s %s" % (provider, userid) )
@@ -73,13 +77,10 @@ class PCAPIRest(object):
             return True
         return False
 
-
     def records(self, provider, userid, path, flt, ogc_sync):
+        """Update/Overwrite/Create/Delete/Download records.
         """
-            Update/Overwrite/Create/Delete/Download records.
-
-        """
-        log.debug('records( %s, %s, %s, %s, %s)' % (provider, userid, path, str(flt), str(ogc_sync) ))
+        log.debug('records( %s, %s, %s, %s, %s)' % (provider, userid, path, str(flt), str(ogc_sync)))
         error = self.auth(provider,userid)
         if (error):
             return error
@@ -123,7 +124,20 @@ class PCAPIRest(object):
                     if recordname_lst[0] != "":
                         ### OBSOLETE LEFT FOR COMPATIBILITY with FTOpen
                         if ogc_sync:
-                            res = { "error":0, "message": "ogc_sync is obsolete and does nothing"}
+                            try:
+                                log.debug("Mirroring command to public uid: ")
+                                log.debug("Creating folder: {}".format(path))
+                                pubfs = fs_provider.FsProvider(public_uid)
+                                pubfs.mkdir(path)
+                                dst = pubfs.realpath(path + "/record.json")
+                                src = self.provider.realpath(path + "/record.json")
+                                log.debug("Copying from {} to {}".format(src,dst))
+                                shutil.copy(src,dst)
+                            except Exception as e:
+                                log.debug("Error mirroring to PUBLIC_COPY: " + e.message)
+                                log.debug("returning success to avoid confusing FTOpen")
+                            res = { "error":0, "message":
+                                    "ogc_sync copies to shib-protected public folder for the german demo"}
                         ###
                         return self.fs(provider,userid,path + "/record.json")
 
@@ -149,7 +163,7 @@ class PCAPIRest(object):
                 return { "error": 1, "msg": "Path %s has subdirectories, which are not allowed" % path}
         except Exception as e:
                 log.exception("Exception: " + str(e))
-                return {"error":1 , "msg": str(e)}
+                return {"error":1, "msg": str(e)}
 
     def surveys(self, provider, userid, sid):
         """This is the new version of editors API for COBWEB which will eventually
@@ -167,23 +181,21 @@ class PCAPIRest(object):
         Will return the survey (editor) file contents after querying <PORTAL> for it
         """
         log.debug('survey({0}, {1}, {2})'.format(provider, userid, sid))
-
-        surveys = geonetwork.get_surveys(userid)
-
+        employeeNumber = self.request.environ.get("employeeNumber", None)
+        cobwebGroup = self.request.environ.get("cobwebGroup", None)
+        log.debug("Survey call from user {} with groups {}".format(
+            employeeNumber,cobwebGroup))
         if not sid:
             # Return all registered surveys
-            return surveys.get_summary_ftopen()
+            metadata = ["DogWasteBag",]
+            names = [u"Hundetüte Protokoll",]
+            return {"error":0, "names": names, "metadata": metadata}
         else:
-            # Return contents of file
-            s = surveys.get_survey(sid)
-            if not s: # no survey found
-                return { "error": 1 , "msg": "User is not registered for syrvey %s" % sid}
-            res = self.fs(provider,s["coordinator"],"/editors/%s.json" % sid)
-            # special case -- portal has survey but coordinator has not created it using Authoring Tool
-            #if isinstance(res,dict) and res["msg"].startswith("[Errno 2] No such file or"):
-            #    abort(404, "No survey found. Did you create a survey using the Authoring Tool?")
+            # Return survey from public folder (protected by shibb)
+            res = self.fs(provider,public_uid,"/editors/{}.json".format(sid))
             return res
-        return {"error":1, "msg":"Unexpected error" }
+
+        return {"error":1, "msg":"Not implemented"}
 
     def editors(self, provider, userid, path, flt):
         """Normally this is just a shortcut for /fs/ calls to the /editors directory.
