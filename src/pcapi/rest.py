@@ -8,7 +8,7 @@ import tempfile
 import uuid
 import urllib2
 import zipfile
-import shutil
+import glob, shutil
 
 from bottle import static_file
 from StringIO import StringIO
@@ -131,14 +131,18 @@ class PCAPIRest(object):
                                 pubfs.mkdir(path)
                                 dst = pubfs.realpath(path + "/record.json")
                                 src = self.provider.realpath(path + "/record.json")
-                                log.debug("Copying from {} to {}".format(src,dst))
-                                #  shutil.copy(src,dst)
+                                log.debug("Copying record.json from {} to {}".format(src,dst))
                                 ## inject original UUID before copying to public
                                 with open(src,"r") as f:
                                     with open(dst,"w") as f_dst:
                                         jsrc = json.load(f)
                                         jsrc["properties"]["original_uuid"] = userid
                                         json.dump(jsrc,f_dst)
+                                srcdir = os.path.dirname(src)
+                                dstdir = os.path.dirname(dst)
+                                log.debug("Copying *.jpg from {} to {}".format(srcdir,dstdir))
+                                for f in glob.glob(srcdir + '/*.jpg'):
+                                    shutil.copy(f, dstdir)
                             except Exception as e:
                                 log.debug("Error mirroring to PUBLIC_COPY: " + e.message)
                                 log.debug("returning success to avoid confusing FTOpen")
