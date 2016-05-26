@@ -12,7 +12,7 @@ import zipfile
 from bottle import static_file
 from StringIO import StringIO
 
-from pcapi import ogr, fs_provider, helper, logtool
+from pcapi import ogr, fs_provider, helper, logtool, config
 from pcapi.exceptions import FsException
 from pcapi.provider import Records
 from pcapi.publish import postgis, geonetwork
@@ -217,13 +217,26 @@ class PCAPIRest(object):
             return error
 
         # Convert editor name to local filesystem path
+        context_base = config.get("semantics", "base")
+        context_relative = path.replace(".json", "")
         path = "/editors/" + path
 
         if path == "/editors//" and not self.provider.exists(path):
             log.debug("creating non-existing editors folder")
             self.provider.mkdir("/editors")
 
-        res = self.fs(provider,userid,path,frmt=flt)
+        def proc(body):
+            try:
+                j = json.loads(body.read())
+                j["context"] = "%s/%s/%s#" % (context_base, context_relative, uuid.uuid4().hex)
+                return StringIO(json.dumps(j))
+                return body
+            except Exception as e:
+                return body
+        if config.getboolean("semantics","enable"):
+            task = proc
+
+        res = self.fs(provider,userid,path,process=task,frmt=flt)
 
         # If "GET /editors//" is reguested then add a "names" parameter
         if path == "/editors//" and res["error"] == 0 and provider == "local" \
@@ -341,7 +354,7 @@ class PCAPIRest(object):
                     return static_file( os.path.basename(rpath) , root=os.path.dirname(rpath))
             ######## PUT -> Upload/Overwrite file ########
             if method=="PUT":
-                fp = self.request.body
+                fp = self.request.body if not process else process(self.request.body)
                 md = self.provider.upload(path, fp, overwrite=True)
                 return { "error": 0, "msg" : "File uploaded", "path":md.ls()}
             ######## POST -> Upload/Rename file ########
