@@ -75,15 +75,15 @@ def describefeaturetype(params):
     SID = None
     with open(FEATURES_FILE) as f:
         FEATURES = json.load(f)
-        for k in FEATURES:
-            if FEATURES[k]["name"] == TYPENAME:
-                SID=k
+        if TYPENAME in FEATURES:
+            SID=FEATURES[TYPENAME]["sid"]
+            TPL_FILE=FEATURES[TYPENAME]["template"]
 
     if not SID:
         return {"error": 1, "response": "TypeName %s not found in features.json"
                 % TYPENAME}
 
-    XSD_FILE=os.path.join(config.get("path", "ows_template_dir"), SID + ".xsd")
+    XSD_FILE=os.path.join(config.get("path", "ows_template_dir"), TPL_FILE + ".xsd")
 
     try:
         with open(XSD_FILE) as f:
@@ -108,11 +108,12 @@ def getfeature(params):
     OUTPUTFORMAT = params["outputformat"] if "outputformat" in params else "text/xml; subtype=gml/3.1.1"
 
     SID = None
+    TPL_FILE = None
     with open(FEATURES_FILE) as f:
         FEATURES = json.load(f)
-        for k in FEATURES:
-            if FEATURES[k]["name"] == TYPENAME:
-                SID=k
+        if TYPENAME in FEATURES:
+            SID=FEATURES[TYPENAME]["sid"]
+            TPL_FILE=FEATURES[TYPENAME]["template"]
 
     if not SID:
         return {"error": 1, "response": "featureType %s not found in features.json"
@@ -136,7 +137,7 @@ def getfeature(params):
             return {"error": 0, "response": res, "mimetype": "application/json"}
         # If not JSON assume XML and pipe through template
         APPSCHEMA_FILE=os.path.join(config.get("path", "ows_template_dir"),
-                                    SID + ".tpl")
+                                    TPL_FILE)
         if os.path.isfile(APPSCHEMA_FILE):
             with open(APPSCHEMA_FILE) as f:
                 res = template(f.read(), FC=res, OWS_ENDPOINT=ENDPOINT,)
@@ -147,29 +148,35 @@ def getfeature(params):
         return {"error": 1, "response": "WFS GetFeature unsuccessful"}
 
 if __name__ == "__main__":
+    """Quickly test complex feature template without using the web app
+    """
     import sys
-    if (len(sys.argv) != 2):
-        print """USAGE: python wfs.py templatefile """
-        sys.exit(1)
-    TPLFILE = sys.argv[1]
+    import argparse
 
-    # constants
-    ENDPOINT='http://localhost:8080/pcapi/ows'
-    FEATURES={"SID1": {"name": "cobweb:FeatureCollection1",
-                       "title": "First Collection",
-                       "template":"template1.tpl"},
-              "SID2": {"name": "cobweb:FeatureCollection2",
-                       "title": "Second Collection",
-                       "template":"tempalte2.tpl"}}
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-i", "--input", type=argparse.FileType('r'), required=True,
+                    help="path to input GeoJSON file")
+    ap.add_argument("-t", "--template", type=argparse.FileType('r'), required=True,
+                    help="path to template file")
+    ap.add_argument("-d", "--debug", type=int, default=0,
+                    help="debug 0|1")
+    args = vars(ap.parse_args())
+
+    TEMPLATE = args["template"].read()
+    JSON = json.load(args["input"])
+    ENDPOINT = "http://locahost:8080/pcapi/ows?"
 
     # print logs
     def dbg(x):
-        print(x)
+        if args["debug"]:
+            print(x)
     log.debug = dbg
 
-    res = template(open(TPLFILE).read(), OWS_ENDPOINT=ENDPOINT,
-                   WFS_FEATURES=FEATURES)
-    dbg(res)
+    res = template(TEMPLATE, FC=JSON, OWS_ENDPOINT=ENDPOINT,)
+    print res
+
     # validate:
-    # xml = xml.dom.minidom.parseString(res)
-    # dbg(xml.toprettyxml(indent='',newl=''))
+    if args["debug"]:
+        import xml
+        xml = xml.dom.minidom.parseString(res)
+        dbg(xml.toprettyxml(indent='',newl=''))
