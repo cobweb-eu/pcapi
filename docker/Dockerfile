@@ -2,11 +2,11 @@ FROM ubuntu:xenial
 
 MAINTAINER EDINA
 
-RUN apt-get update -q && apt-get install -yq git postgresql-server-dev-9.5 python-pip libsqlite3-dev && \
+RUN apt-get update -q && apt-get install -yq git python-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # No binaries, everything is installed from git master repo
-RUN pip install --user git+https://github.com/cobweb-eu/pcapi
+RUN pip install --user git+https://github.com/cobweb-eu/pcapi@lite
 
 # Generate .pcapi boilerplate:
 RUN python $HOME/.local/lib/python2.7/site-packages/pcapi/config.py

@@ -22,7 +22,7 @@ Alternative Installation with Docker
 Docker fans can immediately deploy PCAPI by pointing to the Dockerfile:
 
 ```bash
-docker build -t pcapi https://raw.githubusercontent.com/cobweb-eu/pcapi/master/docker/Dockerfile
+docker build -t pcapi https://raw.githubusercontent.com/cobweb-eu/pcapi/lite/docker/Dockerfile
 ```
 
 One can then can create a pcapi instance listening on port 8080 using
