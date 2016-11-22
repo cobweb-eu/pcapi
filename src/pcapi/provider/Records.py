@@ -3,6 +3,8 @@
 import re, json
 
 from pcapi import logtool
+from pcapi.provider import filter_utils
+
 import time
 
 log = logtool.getLogger("provider", "records")
@@ -144,13 +146,90 @@ def filter_data(records_cache, filters, userid, params={}):
                     if lon >= xmin and lon <= xmax and lat >= ymin and lat<=ymax:
                         tmp_cache.append(x)
             records_cache = tmp_cache
+        if "pip" in filters:
+            tmp_cache = []
+            if "poly" in params:
+                try:
+                    poly = json.loads(params['poly'])
+                    for record in records_cache:
+                        geom = record.content.itervalues().next()['geometry']
+                        if geom['type'] == 'Point':
+                            coords = geom['coordinates']
+                            if filter_utils.point_in_poly(coords[0], coords[1], poly):
+                                tmp_cache.append(record)
+                except ValueError as e:
+                    # invalid json
+                    return {"msg": e.message, "error":1}
+
+            records_cache = tmp_cache
+        if "attribute" in filters:
+            # filter on attribute
+            tmp_cache = []
+            if "attribute_name" not in params or "attribute_value" not in params:
+                return {"msg": 'parameters attribute_name and attribute_value must be defined', "error":1}
+            else:
+                attribute_name = params['attribute_name']
+                attribute_value = params['attribute_value']
+
+                for record in records_cache:
+                    for field in record.content.itervalues().next()['properties']['fields']:
+                        if field['id'] == attribute_name and field['val'] == attribute_value:
+                            tmp_cache.append(record)
+
+            records_cache = tmp_cache
+        if "rangecheck" in filters:
+            tmp_cache = []
+            if 'rangecheck_name' in params:
+                name = params['rangecheck_name']
+                try:
+                    min = _get_float_param(params, "rangecheck_min")
+                    max = _get_float_param(params, "rangecheck_max")
+
+                    if min is None and max is None:
+                        return {'msg': 'Either rangecheck_min or rangecheck_max must be defined', 'error': 1}
+
+                    for record in records_cache:
+                        for field in record.content.itervalues().next()['properties']['fields']:
+                            if field['id'] == name:
+                                try:
+                                    val = float(field['val'])
+                                    if min is None and val <= max or \
+                                    max is None and val >= min or \
+                                    min <= val <= max:
+                                        tmp_cache.append(record)
+                                except ValueError as e:
+                                    # ignore if field value cannot be cast
+                                    pass
+                                break
+                except ValueError as e:
+                    return {"msg": e.message, "error": 1}
+            else:
+                return {'msg': 'Parameter rangecheck_name must be specified', 'error': 1}
+
+            records_cache = tmp_cache
         if "format" in filters:
             if "frmt" not in params:
                 return {"msg": 'missing parameter "frmt"', "error":1}
             frmt = params["frmt"]
             log.debug("filter by format %s" % frmt)
             if frmt == "geojson":
-                return convertToGeoJSON(records_cache, userid)
+                return convertToGeoJSON(records_cache)
             else:
                 return {"error":1, "msg": "unrecognised format: " + repr(frmt)}
     return records_cache
+
+def _get_float_param(params, name):
+    """
+    Get float value of URL parameter. Will throw ValueError if parameter value
+    cannot be cast.
+
+    params: dict
+        URL parameters
+    name: name
+        Parameter name
+    """
+    val = None
+    if name in params:
+        val = float(params[name])
+
+    return val

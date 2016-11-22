@@ -16,6 +16,20 @@ In short, you can install PCAPI globally, locally or within  a virtual environme
 1. `pip install --user git+https://github.com/cobweb-eu/pcapi`
 2. `pcapi`
 
+Alternative Installation with Docker
+------------------------------------
+
+Docker fans can immediately deploy PCAPI by pointing to the Dockerfile:
+
+```bash
+docker build -t pcapi https://raw.githubusercontent.com/cobweb-eu/pcapi/master/docker/Dockerfile
+```
+
+One can then can create a pcapi instance listening on port 8080 using
+```bash
+docker run -p 8080:8080 -d pcapi
+```
+
 Advanced Configuration
 ----------------------
 
@@ -47,7 +61,7 @@ Directory Tree is organised as follows
 ### Documentation:
 
 under ./docs:
-	All documenation including the current PCAPI REST API specification.
+	All documenation including the current [PCAPI REST API specification](docs/PCAPI_reference.md).
 
 ### Sources:
 
