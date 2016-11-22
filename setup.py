@@ -13,9 +13,7 @@ setup(
     },
 
     install_requires=['bottle==0.11.4',
-                      'WebTest==2.0.20',
-                      'psycopg2==2.5.3',
-                      'pysqlite==2.6.3'],
+                      'WebTest==2.0.20'],
     zip_safe=True,
     entry_points={
         'console_scripts': [
